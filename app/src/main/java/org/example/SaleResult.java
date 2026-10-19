@@ -3,9 +3,9 @@ package org.example;
 public class SaleResult {
     public final int customers;
     public final int cupsSold;
-    public final int revenue;        // in cents
-    public final int wastedPitchers; // whole pitchers thrown out
-    public final int wastedCups;     // leftover cups thrown out
+    public final int revenue;
+    public final int wastedPitchers;
+    public final int wastedCups;
 
     public SaleResult(int customers, int cupsSold, int revenue,
                       int wastedPitchers, int wastedCups) {

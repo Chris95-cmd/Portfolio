@@ -99,7 +99,7 @@ public class LemonadeStand {
         SaleResult result = new SaleResult(customers, cupsSold, revenue,
                 cupsLeft / CUPS_PER_PITCHER, cupsLeft % CUPS_PER_PITCHER);
 
-        pitchers = 0; // unsold lemonade goes to waste
+        pitchers = 0;
         day++;
         return result;
     }
