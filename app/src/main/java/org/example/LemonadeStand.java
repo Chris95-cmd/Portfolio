@@ -1,19 +1,30 @@
 package org.example;
 
+import java.util.Random;
+
 public class LemonadeStand {
     public static final int STARTING_CASH = 10000;
-    public static final int LEMON_COST = 100;
-    public static final int SUGAR_COST = 50;
+    public static final int STARTING_LEMON_PRICE = 100;
+    public static final int STARTING_SUGAR_PRICE = 50;
     public static final int CUPS_PER_PITCHER = 8;
     public static final int MAX_CUSTOMERS = 500;
-    public static final int MIN_PRICE = 1;
+    public static final int MIN_PRICE = 0;
     public static final int MAX_PRICE = 10000;
+    public static final int DAILY_RENT = 3000;
+    public static final int MAX_LEMONADE_PRICE = 500;
+    public static final double MAX_PRICE_SWING = 0.05;
+
 
     private int cash;
     private int lemons;
     private int sugar;
     private int pitchers;
     private int day;
+
+    private double lemonMarketPrice;
+    private double sugarMarketPrice;
+    private int previousLemonPrice;
+    private int previousSugarPrice;
 
     private int lemonsPerPitcher;
     private int sugarPerPitcher;
@@ -26,6 +37,10 @@ public class LemonadeStand {
         sugar = 0;
         pitchers = 0;
         day = 1;
+        lemonMarketPrice = STARTING_LEMON_PRICE;
+        sugarMarketPrice = STARTING_SUGAR_PRICE;
+        previousLemonPrice = STARTING_LEMON_PRICE;
+        previousSugarPrice = STARTING_SUGAR_PRICE;
         lemonsPerPitcher = 4;
         sugarPerPitcher = 2;
         waterPerPitcher = 6;
@@ -33,7 +48,52 @@ public class LemonadeStand {
     }
 
     public long getCost(int lemonsToBuy, int sugarToBuy) {
-        return (long) lemonsToBuy * LEMON_COST + (long) sugarToBuy * SUGAR_COST;
+        return (long) lemonsToBuy * getLemonPrice() + (long) sugarToBuy * getSugarPrice();
+    }
+    public int getLemonPrice() {
+        return (int) Math.round(lemonMarketPrice);
+    }
+
+    public int getSugarPrice() {
+        return (int) Math.round(sugarMarketPrice);
+    }
+
+    public int getPreviousLemonPrice() {
+        return previousLemonPrice;
+    }
+
+    public int getPreviousSugarPrice() {
+        return previousSugarPrice;
+    }
+    public void updatePrices(Random random) {
+        previousLemonPrice = getLemonPrice();
+        previousSugarPrice = getSugarPrice();
+        lemonMarketPrice = fluctuate(lemonMarketPrice, random);
+        sugarMarketPrice = fluctuate(sugarMarketPrice, random);
+    }
+
+    private double fluctuate(double price, Random random) {
+        double change = (random.nextDouble() * 2 - 1) * MAX_PRICE_SWING;
+        return Math.max(1.0, price * (1 + change));
+    }
+    public void payRent() {
+        cash -= DAILY_RENT;
+    }
+    public long getNetWorth() {
+        return (long) cash + (long) lemons * getLemonPrice() + (long) sugar * getSugarPrice();
+    }
+    public boolean isBankrupt() {
+        return getNetWorth() < 0;
+    }
+    public int adjustCustomers(int rawCustomers) {
+        if (pricePerCup <= 0) {
+            return pitchers * CUPS_PER_PITCHER;
+        }
+        if (pricePerCup >= MAX_LEMONADE_PRICE) {
+            return 0;
+        }
+        double multiplier = 1.0 - (double) pricePerCup / MAX_LEMONADE_PRICE;
+        return (int) Math.round(rawCustomers * multiplier);
     }
 
     public boolean buyIngredients(int lemonsToBuy, int sugarToBuy) {
@@ -102,10 +162,6 @@ public class LemonadeStand {
         pitchers = 0;
         day++;
         return result;
-    }
-
-    public boolean isGameOver() {
-        return pitchers == 0 && lemons == 0 && cash < LEMON_COST;
     }
 
     public int getCash() {

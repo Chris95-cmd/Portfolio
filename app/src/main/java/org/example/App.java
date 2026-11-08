@@ -12,16 +12,40 @@ public class App {
         System.out.println("Welcome to My Lemonade Stand!");
 
         while (true) {
-            if (stand.isGameOver()) {
+            startNewDay(stand, random);
+            if (stand.isBankrupt()) {
                 System.out.println();
-                System.out.println("You have no lemons and not enough money to buy one.");
-                System.out.println("Your lemonade stand has gone out of business. Game over!");
+                System.out.println("Game over! You made it to day " + stand.getDay()
+                        + " before going bankrupt!");
                 break;
             }
             runPreparationPhase(stand, input);
             runSellingPhase(stand, random);
         }
         input.close();
+    }
+    private static void startNewDay(LemonadeStand stand, Random random) {
+        System.out.println();
+        System.out.println("=== Day " + stand.getDay() + " ===");
+        if (stand.getDay() > 1) {
+            stand.updatePrices(random);
+            describePriceChange("lemons", "lemon", stand.getLemonPrice(), stand.getPreviousLemonPrice());
+            describePriceChange("sugar", "cup of sugar", stand.getSugarPrice(), stand.getPreviousSugarPrice());
+        }
+        stand.payRent();
+        System.out.println("Rent is due! You paid your landlord " + formatMoney(LemonadeStand.DAILY_RENT)
+                + ". Your net worth is now " + formatMoney(stand.getNetWorth()) + ".");
+    }
+    private static void describePriceChange(String goods, String unit, int price, int previous) {
+        String text = "Today's price of " + goods + " is " + formatMoney(price) + " per " + unit + ".";
+        if (price > previous) {
+            text += " This is up from yesterday's price of " + formatMoney(previous) + ".";
+        } else if (price < previous) {
+            text += " This is down from yesterday's price of " + formatMoney(previous) + ".";
+        } else {
+            text += " This is unchanged from yesterday's price.";
+        }
+        System.out.println(text);
     }
     private static void runPreparationPhase(LemonadeStand stand, Scanner input) {
         System.out.println();
@@ -58,8 +82,8 @@ public class App {
     }
 
     private static void purchaseIngredients(LemonadeStand stand, Scanner input) {
-        System.out.println("Lemons are " + formatMoney(LemonadeStand.LEMON_COST) + " each");
-        System.out.println("Sugar is " + formatMoney(LemonadeStand.SUGAR_COST) + " per cup");
+        System.out.println("Lemons are " + formatMoney(stand.getLemonPrice()) + " each");
+        System.out.println("Sugar is " + formatMoney(stand.getSugarPrice()) + " per cup");
         System.out.println();
 
         int lemons = readInt(input, "How many lemons do you want to buy? ", 0);
@@ -136,8 +160,10 @@ public class App {
         System.out.println("The customers are coming!");
         System.out.println();
 
-        int customers = random.nextInt(LemonadeStand.MAX_CUSTOMERS) + 1;
+        int rawCustomers = random.nextInt(LemonadeStand.MAX_CUSTOMERS) + 1;
+        int customers = stand.adjustCustomers(rawCustomers);
         boolean hadLemonade = stand.getPitchers() > 0;
+        int price = stand.getPricePerCup();
         SaleResult result = stand.sellLemonade(customers);
 
         System.out.println(result.customers + " customers visited your stand today! You sold "
@@ -145,6 +171,8 @@ public class App {
 
         if (!hadLemonade) {
             System.out.println("You didn't make any lemonade, so everyone left disappointed.");
+        } else if (price >= LemonadeStand.MAX_LEMONADE_PRICE) {
+            System.out.println("Your lemonade was too expensive, so nobody bought any.");
         } else if (result.customers > result.cupsSold) {
             System.out.println("You sold out! " + (result.customers - result.cupsSold)
                     + " customers left without lemonade.");
@@ -170,6 +198,7 @@ public class App {
         System.out.println("Water (Cups): Infinity");
         System.out.println("Current Pitchers: " + stand.getPitchers());
         System.out.println("Cash: " + formatMoney(stand.getCash()));
+        System.out.println("Net Worth: " + formatMoney(stand.getNetWorth()));
         System.out.println();
     }
 
@@ -214,8 +243,9 @@ public class App {
             }
         }
     }
-
     private static String formatMoney(long cents) {
-        return String.format("$%d.%02d", cents / 100, cents % 100);
+        String sign = cents < 0 ? "-" : "";
+        long abs = Math.abs(cents);
+        return String.format("%s$%d.%02d", sign, abs / 100, abs % 100);
     }
 }

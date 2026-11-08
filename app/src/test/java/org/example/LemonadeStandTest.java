@@ -160,9 +160,9 @@ public class LemonadeStandTest {
     }
 
     @Test
-    void setPriceRejectsZero() {
-        assertFalse(stand.setPrice(0));
-        assertEquals(100, stand.getPricePerCup());
+    void setPriceAcceptsZero() {
+        assertTrue(stand.setPrice(0));
+        assertEquals(0, stand.getPricePerCup());
     }
 
     @Test
@@ -336,31 +336,123 @@ public class LemonadeStandTest {
     }
 
 
+    // ----- Rent and game end -----
+
     @Test
-    void gameIsNotOverAtTheStart() {
-        assertFalse(stand.isGameOver());
+    void payRentSubtractsFixedRent() {
+        stand.payRent();
+        assertEquals(10000 - LemonadeStand.DAILY_RENT, stand.getCash());
     }
 
     @Test
-    void gameIsOverWhenNoLemonsAndNotEnoughCashForOne() {
-        stand.buyIngredients(0, 200);
-
-        assertTrue(stand.isGameOver());
+    void notBankruptAtTheStart() {
+        assertFalse(stand.isBankrupt());
     }
 
     @Test
-    void gameIsNotOverWhenYouStillHaveLemons() {
-        stand.buyIngredients(100, 0);
-
-        assertFalse(stand.isGameOver());
+    void netWorthIncludesIngredientsAtMarketPrice() {
+        stand.buyIngredients(10, 4);
+        assertEquals(10000, stand.getNetWorth());
     }
 
     @Test
-    void gameIsNotOverWhenYouHaveCashForALemon() {
-        stand.buyIngredients(99, 0);
-        stand.setRecipe(99, 0, 6);
-        stand.makePitchers(1);
+    void notBankruptWhileNetWorthIsPositive() {
+        stand.payRent();
+        stand.payRent();
+        stand.payRent();
+        assertEquals(1000, stand.getNetWorth());
+        assertFalse(stand.isBankrupt());
+    }
 
-        assertFalse(stand.isGameOver());
+    @Test
+    void bankruptWhenNetWorthBelowZero() {
+        for (int i = 0; i < 4; i++) {
+            stand.payRent();
+        }
+        assertEquals(-2000, stand.getNetWorth());
+        assertTrue(stand.isBankrupt());
+    }
+
+    @Test
+    void ingredientsCountTowardNetWorthSoRentAloneDoesNotBankruptYou() {
+        stand.buyIngredients(100, 0); // cash 0, lemons worth $100
+        stand.payRent();              // cash -$30, net worth $70
+        assertEquals(7000, stand.getNetWorth());
+        assertFalse(stand.isBankrupt());
+    }
+
+    // ----- Fluctuating prices -----
+
+    @Test
+    void pricesStartAtStartingValues() {
+        assertEquals(100, stand.getLemonPrice());
+        assertEquals(50, stand.getSugarPrice());
+    }
+
+    @Test
+    void pricesStayWithinFivePercentEachDay() {
+        java.util.Random random = new java.util.Random(42);
+        for (int i = 0; i < 1000; i++) {
+            double lemonBefore = stand.getLemonPrice();
+            double sugarBefore = stand.getSugarPrice();
+            stand.updatePrices(random);
+            // allow 0.5 cent of rounding slack
+            assertTrue(Math.abs(stand.getLemonPrice() - lemonBefore) <= lemonBefore * 0.05 + 1);
+            assertTrue(Math.abs(stand.getSugarPrice() - sugarBefore) <= sugarBefore * 0.05 + 1);
+            assertTrue(stand.getLemonPrice() >= 1);
+            assertTrue(stand.getSugarPrice() >= 1);
+        }
+    }
+
+    @Test
+    void updatePricesRemembersPreviousPrices() {
+        stand.updatePrices(new java.util.Random(1));
+        assertEquals(100, stand.getPreviousLemonPrice());
+        assertEquals(50, stand.getPreviousSugarPrice());
+    }
+
+    @Test
+    void buyingUsesCurrentMarketPrice() {
+        stand.updatePrices(new java.util.Random(7));
+        assertEquals(10L * stand.getLemonPrice() + 4L * stand.getSugarPrice(), stand.getCost(10, 4));
+    }
+
+    // ----- Supply and demand -----
+
+    @Test
+    void zeroPriceSellsEntireStock() {
+        stand.setRecipe(5, 2, 6);
+        stand.buyIngredients(10, 4);
+        stand.makePitchers(2);
+        stand.setPrice(0);
+        assertEquals(16, stand.adjustCustomers(3));
+    }
+
+    @Test
+    void maxPriceSellsNothing() {
+        stand.setPrice(LemonadeStand.MAX_LEMONADE_PRICE);
+        assertEquals(0, stand.adjustCustomers(100));
+    }
+
+    @Test
+    void priceAboveMaxSellsNothing() {
+        stand.setPrice(LemonadeStand.MAX_LEMONADE_PRICE + 100);
+        assertEquals(0, stand.adjustCustomers(100));
+    }
+
+    @Test
+    void middlePriceScalesCustomers() {
+        stand.setPrice(100); // 1 - 100/500 = 0.8
+        assertEquals(80, stand.adjustCustomers(100));
+        stand.setPrice(250); // 0.5
+        assertEquals(50, stand.adjustCustomers(100));
+    }
+
+    @Test
+    void demandMultiplierRoundsToNearestWholeNumber() {
+        stand.setPrice(100);
+        assertEquals(4, stand.adjustCustomers(5)); // 4.0
+        assertEquals(3, stand.adjustCustomers(4)); // 3.2
+        assertEquals(2, stand.adjustCustomers(2)); // 1.6
     }
 }
