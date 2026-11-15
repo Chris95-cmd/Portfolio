@@ -19,7 +19,12 @@ public class App {
                         + " before going bankrupt!");
                 break;
             }
-            runPreparationPhase(stand, input);
+            boolean quit = runPreparationPhase(stand, input);
+            if (quit) {
+                System.out.println("Thanks for playing! You made it to day " + stand.getDay()
+                        + " with a net worth of " + formatMoney(stand.getNetWorth()) + ".");
+                break;
+            }
             runSellingPhase(stand, random);
         }
         input.close();
@@ -47,7 +52,7 @@ public class App {
         }
         System.out.println(text);
     }
-    private static void runPreparationPhase(LemonadeStand stand, Scanner input) {
+    private static boolean runPreparationPhase(LemonadeStand stand, Scanner input) {
         System.out.println();
         System.out.println("Day " + stand.getDay() + ": Preparation Phase");
         System.out.println("Let's prepare for the day!");
@@ -60,6 +65,7 @@ public class App {
             System.out.println("3. Set the Price");
             System.out.println("4. Make Pitchers of Lemonade");
             System.out.println("5. Move Onto the Selling Phase");
+            System.out.println("6. Quit");
             System.out.println();
             System.out.print("What would you like to do? ");
             String choice = input.nextLine().trim();
@@ -75,10 +81,13 @@ public class App {
                 makePitchers(stand, input);
             } else if (choice.equals("5")) {
                 preparing = false;
+            } else if (choice.equals("6")) {
+                return true;
             } else {
                 System.out.println("Invalid choice, try again.");
             }
         }
+        return false;
     }
 
     private static void purchaseIngredients(LemonadeStand stand, Scanner input) {
